@@ -2,7 +2,7 @@
 
 This repository defines a Codex subagent workflow for AI-supported QA of Word documents.
 
-The repo is instruction-first and agent-first. Do not create deterministic Python scripts for parsing, reviewing, applying changes, auditing, or document processing unless the user explicitly changes the project direction. Do not create a Python package. Do not use `uv`.
+The repo is instruction-first and agent-first. Do not create deterministic Python scripts for parsing, reviewing, applying changes, auditing, or document processing unless the user explicitly changes the project direction. `document_map_parser.py` is the one exception — it is the approved DOCX extraction helper and may be extended. Do not create a Python package. Do not use `uv`.
 
 ## Hard Rules
 
@@ -10,31 +10,37 @@ The repo is instruction-first and agent-first. Do not create deterministic Pytho
 2. Always work on a reviewed copy.
 3. Reviewer subagents must not edit files.
 4. Reviewer subagents return structured JSON issues only.
-5. The Document Map subagent extracts structure and claims but does not review or edit.
-6. The Issue Log Consolidator subagent deduplicates and prioritises findings but does not edit.
-7. The Document Application subagent is the only subagent allowed to apply approved changes to the reviewed copy.
-8. The Audit subagent must run after any document modification.
-9. No silent text changes are allowed.
-10. If tracked changes are requested, every textual change must be visible as a tracked change.
-11. If robust tracked changes cannot be produced, stop and report the limitation rather than faking it.
-12. The audit must check original preservation, tracked-change integrity, no silent XML changes, reject-all simulation where feasible, and issue-log reconciliation.
-13. Use resolved paths. Never write outside the repo or approved workspace.
-14. Do not invent project facts. Use only the document and supplied context files.
-15. Distinguish `safe_edit`, `comment_only`, and `human_decision_required` issues.
+5. The Document Map Runner subagent runs `document_map_parser.py` and writes extraction outputs. It does not review or edit.
+6. The Document Map subagent reads the extraction outputs and produces a human summary. It does not parse DOCX or run scripts.
+7. The Issue Log Consolidator subagent deduplicates and prioritises findings but does not edit.
+8. The Document Application subagent is the only subagent allowed to apply approved changes to the reviewed copy.
+9. The Audit subagent must run after any document modification.
+10. No silent text changes are allowed.
+11. If tracked changes are requested, every textual change must be visible as a tracked change.
+12. If robust tracked changes cannot be produced, stop and report the limitation rather than faking it.
+13. The audit must check original preservation, tracked-change integrity, no silent XML changes, reject-all simulation where feasible, and issue-log reconciliation.
+14. Use resolved paths. Never write outside the repo or approved workspace.
+15. Do not invent project facts. Use only the document and supplied context files.
+16. Distinguish `safe_edit`, `comment_only`, and `human_decision_required` issues.
 
 ## Fixed Workflow
 
 1. User provides a Word document.
-2. Orchestrator scopes QA using the minimum required questions.
-3. Orchestrator creates a QA Plan.
+2. Orchestrator scopes QA using the minimum required questions. It explains which hats are chapter-level vs full-document.
+3. Orchestrator creates a QA Plan including chapter count and estimated subagent count.
 4. User approves or edits the QA Plan before any mapping or reviewer work begins.
-5. Document Map subagent extracts structure and claims without reviewing or editing.
-6. Selected reviewer subagents run and return JSON issues matching `schemas/issue.schema.json`.
-7. Issue Log Consolidator creates a consolidated issue log.
-8. User chooses application mode: issue-log-only, comments-only, tracked changes for safe edits and comments for everything else, rerun selected hat, or stop without applying changes.
-9. Document Application subagent applies only user-approved changes to the reviewed copy.
-10. Audit subagent runs after any document application.
-11. Outputs are reviewed `.docx` where applicable, issue log, application log where applicable, audit report where applicable, and optional unresolved issues note.
+5. Document extraction runs in two steps:
+   - Document Map Runner runs `document_map_parser.py --output --by-chapter --term-index` and writes: `qa_run/working/document-map.json`, `qa_run/working/chapters/<chapter>.json` (one per section), `qa_run/working/term-index.json`. Fails loudly on error; workflow stops until error is resolved.
+   - Document Map reads `document-map.json` and writes `qa_run/working/document-map-summary.md`.
+6. Selected reviewer subagents run according to their scope:
+   - Chapter-level hats (proofreading, house style, references/sources): one subagent per chapter, run in parallel. Each receives only its chapter's data slice.
+   - Full-document hats (terminology, numbers/tables/claims): one subagent for the whole document. Terminology receives the term-index only; numbers receives `numeric_claims` and `tables` only.
+7. Chapter-level outputs are merged per hat before consolidation.
+8. Issue Log Consolidator creates a consolidated issue log.
+9. User chooses application mode: issue-log-only, comments-only, tracked changes for safe edits and comments for everything else, rerun selected hat, or stop without applying changes.
+10. Document Application subagent applies only user-approved changes to the reviewed copy.
+11. Audit subagent runs after any document application.
+12. Outputs: reviewed `.docx` where applicable, issue log, application log where applicable, audit report, optional unresolved issues note.
 
 ## Subagent Roles
 
@@ -42,20 +48,27 @@ The repo is instruction-first and agent-first. Do not create deterministic Pytho
 
 The Orchestrator owns scoping, sequencing, user approval checkpoints, and final delivery. It must create a QA Plan before reviewer work begins and must wait for user approval before proceeding beyond the plan.
 
+When presenting hats to the user, the Orchestrator distinguishes chapter-level hats (proofreading, house style, references/sources) from full-document hats (terminology, numbers/tables/claims) and states the estimated subagent count.
+
 The Orchestrator must not apply document changes directly. It may create copies, route tasks, collect outputs, and prepare summaries.
+
+### Document Map Runner Subagent
+
+The Document Map Runner executes `document_map_parser.py` as a deterministic shell command. It writes three outputs: the full `document-map.json`, per-section `chapters/` files, and `term-index.json`. It reports SUCCESS or FAILURE with exact error output. It does not parse DOCX XML itself and does not fall back to ad-hoc extraction on failure.
 
 ### Document Map Subagent
 
-The Document Map subagent extracts structure and claims from the Word document. It may identify sections, headings, tables, figures, defined terms, cross-references, claims, assumptions, and dependencies.
-
-It must not review, judge, rewrite, comment on, or edit the document.
+The Document Map subagent reads the pre-built `document-map.json` and produces a human-readable `document-map-summary.md`. It is read-only. It does not run scripts, open the DOCX file, or modify `document-map.json`.
 
 ### Reviewer Subagents
 
 Reviewer subagents perform focused QA review. They must be read-only and must return structured JSON issues only.
 
-Each issue should distinguish whether it is:
+**Chapter-level hats** receive a single chapter pack containing only that chapter's data slice (paragraphs for proofreading and house style; references and footnotes for references/sources). They do not receive the full document map.
 
+**Full-document hats** receive a single pack. The terminology hat receives the term-index (term occurrences and locations) — not raw paragraphs. The numbers hat receives only `numeric_claims` and `tables`.
+
+Each issue must distinguish whether it is:
 - `safe_edit`
 - `comment_only`
 - `human_decision_required`
@@ -64,23 +77,23 @@ Reviewer subagents must not edit files, create reviewed copies, apply changes, o
 
 ### Issue Log Consolidator Subagent
 
-The Issue Log Consolidator deduplicates, merges, prioritises, and normalises reviewer findings into a single issue log. It must not edit the Word document.
+The Issue Log Consolidator merges chapter-level outputs per hat first, then deduplicates, prioritises, and normalises all reviewer findings into a single issue log. It must not edit the Word document.
 
-It should preserve traceability from consolidated findings back to the source reviewer issue ids where possible.
+It preserves traceability from consolidated findings back to source reviewer issue IDs where possible.
 
 ### Document Application Subagent
 
 The Document Application subagent is the only subagent allowed to apply user-approved changes, and only to the reviewed copy.
 
-It must apply only changes explicitly approved by the user. It must preserve unresolved, ambiguous, or human-decision issues for the unresolved issues note rather than guessing.
+It applies only changes explicitly approved by the user. It preserves unresolved, ambiguous, or human-decision issues for the unresolved issues note rather than guessing.
 
-If tracked changes are requested and robust tracked changes cannot be produced, it must stop and report the limitation.
+If tracked changes are requested and robust tracked changes cannot be produced, it stops and reports the limitation.
 
 The default modification mode is tracked changes for `safe_edit` issues and comments for everything else.
 
 ### Audit Subagent
 
-The Audit subagent runs after any document modification. It must check:
+The Audit subagent runs after any document modification. It checks:
 
 - the original document was preserved
 - tracked-change integrity
@@ -88,7 +101,7 @@ The Audit subagent runs after any document modification. It must check:
 - reject-all simulation where feasible
 - reconciliation between the issue log, approved changes, applied changes, and unresolved issues
 
-The Audit subagent must report failures plainly and must not apply fixes itself.
+The Audit subagent reports failures plainly and does not apply fixes itself.
 
 ## Path And File Safety
 
@@ -100,9 +113,9 @@ Do not invent project facts. Use only the Word document and supplied context fil
 
 ## Expected Outputs
 
-The workflow should produce:
+The workflow produces:
 
 - reviewed `.docx`
-- issue log
+- issue log (`.md` and/or `.csv`)
 - audit report
 - optional unresolved issues note

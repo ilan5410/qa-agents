@@ -6,7 +6,7 @@ After the first issue log is produced, the user may choose a rerun or stop path 
 
 The orchestrator should ask the user to choose one or more of:
 
-1. Rerun one reviewer hat.
+1. Rerun one reviewer hat. Default reruns target the canonical hats; legacy fallback hats only rerun if they were explicitly selected in the original run.
 2. Rerun all hats on a selected section.
 3. Rerun only unresolved high-severity issues.
 4. Switch from tracked changes to comments-only.
@@ -57,4 +57,3 @@ If the user switches from tracked changes to comments-only:
 If the user chooses `export issue log only`, produce the latest issue log and do not invoke the Document Application subagent.
 
 If the user chooses `stop without applying changes`, preserve the latest issue log and any audit-free workflow notes, then stop. No document modification should occur.
-

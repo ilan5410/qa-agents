@@ -75,7 +75,7 @@ Scenario:
 Pass criteria:
 
 - Each issue matches `schemas/issue.schema.json`.
-- Each reviewer uses the correct `reviewer_hat`.
+- Each reviewer uses the correct `reviewer_hat` for the canonical pipeline (`footnote_proofreader_update`, `style_proofreader`, `technical_proofreader`, `terminology`, `numbers_tables_claims`) or for an explicitly selected legacy fallback reviewer. The QA Plan `selected_subagents` should use the TOML subagent names, including `terminology_reviewer` and `numbers_tables_claims_reviewer`.
 - Issues include severity, confidence, location, rationale, recommended action, edit safety, status, source, and metadata.
 - Reviewer outputs are JSON-only.
 - Reviewer subagents do not edit files.
@@ -104,6 +104,7 @@ Pass criteria:
 - Safe edits, comment-only issues, and human-decision issues are clearly separated.
 - Consolidated output matches `schemas/issue-log.schema.json`.
 - Markdown issue log includes a CSV-compatible table.
+- Canonical reviewer outputs are consolidated before any legacy fallback outputs; legacy outputs are ignored unless explicitly selected for comparison.
 
 Fail criteria:
 

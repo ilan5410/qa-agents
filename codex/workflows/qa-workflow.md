@@ -29,6 +29,7 @@ This is the fixed workflow for the Codex Word QA process. README.md, AGENTS.md, 
 6a. Document Map Runner subagent runs `document_map_parser.py` and writes `qa_run/working/document-map.json`. Fails loudly on error; orchestrator stops and reports to user.
 6b. Document Map subagent reads `document-map.json` and writes the human-readable `qa_run/working/document-map-summary.md`.
 7. Selected reviewer subagents run and return JSON issues matching `schemas/issue.schema.json`.
+   Default full-technical-QA runs the stronger canonical reviewers: `footnote_proofreader_update`, `style_proofreader`, `technical_proofreader`, `terminology_reviewer`, and `numbers_tables_claims_reviewer`. Legacy fallback reviewers only run if the user explicitly selects them.
 8. Issue Log Consolidator creates a consolidated issue log.
 9. User chooses application mode: issue-log-only, comments-only, tracked changes for safe edits and comments for everything else, rerun selected hat, or stop without applying changes.
 10. Document Application subagent applies only user-approved changes to the reviewed copy.

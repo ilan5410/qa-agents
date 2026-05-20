@@ -95,6 +95,19 @@ class BlockText:
     col_index: int | None = None
 
 
+@dataclass(frozen=True)
+class TextSegment:
+    kind: str
+    text: str
+    source_tag: str
+    deleted: bool = False
+    instruction: bool = False
+    footnote_id: str | None = None
+    endnote_id: str | None = None
+    comment_id: str | None = None
+    field_char_type: str | None = None
+
+
 def qn(tag: str) -> str:
     return f"{{{W_NS}}}{tag}"
 
@@ -366,9 +379,69 @@ class DocxMapParser:
             "limitations": limitations,
         }
 
+    def build_edit_map(self, document_id: str) -> dict:
+        """Return a run-aware paragraph map for downstream OOXML application.
+
+        This output is intentionally separate from the validated document-map schema so
+        the richer structure can evolve without breaking reviewer inputs.
+        """
+        paragraphs: list[dict] = []
+        heading_path: list[str] = []
+        current_section_id = "sec_0000"
+        section_counter = 0
+        paragraph_counter = 0
+
+        for block in self._iter_body_blocks(self.body):
+            if block.kind != "paragraph":
+                continue
+            paragraph = block.text
+            style_id, style_name = self._paragraph_style(block.location)
+            style_info = self.styles.get(style_id or "")
+            if self._is_navigation_artifact(paragraph, style_id, style_name):
+                continue
+            level = self._heading_level(style_id, style_name, style_info, paragraph)
+            if level is not None:
+                section_counter += 1
+                current_section_id = f"sec_{section_counter:04d}"
+                heading_path = self._update_heading_path(heading_path, level, paragraph)
+                continue
+
+            paragraph_counter += 1
+            paragraph_id = f"p_{paragraph_counter:04d}"
+            edit_info = self._paragraph_edit_info(block.location)
+            paragraphs.append(
+                {
+                    "paragraph_id": paragraph_id,
+                    "section_id": current_section_id,
+                    "heading_path": heading_path.copy(),
+                    "style_if_available": style_name or style_id,
+                    "xml_location": block.location,
+                    "text": paragraph,
+                    "visible_text": paragraph,
+                    "has_tracked_changes": edit_info["has_tracked_changes"],
+                    "has_field_codes": edit_info["has_field_codes"],
+                    "has_comments": edit_info["has_comments"],
+                    "footnote_ids": edit_info["footnote_ids"],
+                    "segments": edit_info["segments"],
+                }
+            )
+
+        return {
+            "document_id": document_id,
+            "source_docx_path": str(self.docx_path.resolve()),
+            "has_tracked_changes": self._package_has_tracked_changes(),
+            "has_field_codes": self._package_has_field_codes(),
+            "has_comments": bool(self.comments),
+            "paragraphs": paragraphs,
+        }
+
     def _package_has_tracked_changes(self) -> bool:
         doc_xml = self.document
         return bool(doc_xml.findall(".//w:ins", NS) or doc_xml.findall(".//w:del", NS))
+
+    def _package_has_field_codes(self) -> bool:
+        doc_xml = self.document
+        return bool(doc_xml.findall(".//w:instrText", NS) or doc_xml.findall(".//w:fldChar", NS))
 
     def _paragraph_style(self, block_location: str) -> tuple[str | None, str | None]:
         # `block_location` carries the XML path-like token used by the iterator.
@@ -532,6 +605,148 @@ class DocxMapParser:
 
     def _table_visible_text(self, tbl: ET.Element) -> str:
         return self._visible_text(tbl)
+
+    def _paragraph_edit_info(self, block_location: str) -> dict:
+        node = self._location_lookup.get(block_location)
+        if node is None:
+            return {
+                "has_tracked_changes": False,
+                "has_field_codes": False,
+                "has_comments": False,
+                "footnote_ids": [],
+                "segments": [],
+            }
+
+        segments: list[dict] = []
+        footnote_ids: list[str] = []
+        seen_footnotes: set[str] = set()
+        seen_comments: set[str] = set()
+        has_tracked_changes = False
+        has_field_codes = False
+        has_comments = False
+
+        def emit_segment(segment: TextSegment) -> None:
+            nonlocal has_tracked_changes, has_field_codes, has_comments
+            if segment.deleted or segment.instruction or segment.kind in {"deleted_text", "field_char"}:
+                has_tracked_changes = has_tracked_changes or segment.deleted
+            if segment.instruction or segment.kind in {"instruction_text", "field_char"}:
+                has_field_codes = True
+            if segment.kind.startswith("comment"):
+                has_comments = True
+            if segment.kind == "footnote_reference" and segment.footnote_id and segment.footnote_id not in seen_footnotes:
+                seen_footnotes.add(segment.footnote_id)
+                footnote_ids.append(segment.footnote_id)
+            if segment.kind == "comment_range" and segment.comment_id and segment.comment_id not in seen_comments:
+                seen_comments.add(segment.comment_id)
+            segments.append(
+                {
+                    "kind": segment.kind,
+                    "text": segment.text,
+                    "source_tag": segment.source_tag,
+                    "deleted": segment.deleted,
+                    "instruction": segment.instruction,
+                    "footnote_id": segment.footnote_id,
+                    "endnote_id": segment.endnote_id,
+                    "comment_id": segment.comment_id,
+                    "field_char_type": segment.field_char_type,
+                }
+            )
+
+        def walk(node: ET.Element, in_deleted: bool = False, in_instr: bool = False) -> None:
+            nonlocal has_tracked_changes, has_field_codes, has_comments
+            tag = local_name(node)
+            if tag in {"del", "moveFrom"}:
+                in_deleted = True
+            if tag in {"instrText"}:
+                in_instr = True
+            if tag in {"commentRangeStart", "commentRangeEnd"}:
+                has_comments = True
+                emit_segment(
+                    TextSegment(
+                        kind="comment_range",
+                        text="",
+                        source_tag=tag,
+                        comment_id=node.get(qn("id")),
+                    )
+                )
+            elif tag == "footnoteReference":
+                marker = node.get(qn("id"))
+                emit_segment(
+                    TextSegment(
+                        kind="footnote_reference",
+                        text=f"[fn:{marker}]" if marker is not None else "[fn:]",
+                        source_tag=tag,
+                        footnote_id=marker,
+                    )
+                )
+            elif tag == "endnoteReference":
+                marker = node.get(qn("id"))
+                emit_segment(
+                    TextSegment(
+                        kind="endnote_reference",
+                        text=f"[en:{marker}]" if marker is not None else "[en:]",
+                        source_tag=tag,
+                        endnote_id=marker,
+                    )
+                )
+            elif tag == "fldChar":
+                has_field_codes = True
+                emit_segment(
+                    TextSegment(
+                        kind="field_char",
+                        text="",
+                        source_tag=tag,
+                        field_char_type=node.get(qn("fldCharType")),
+                    )
+                )
+            elif tag == "instrText":
+                if node.text:
+                    has_field_codes = True
+                    emit_segment(
+                        TextSegment(
+                            kind="instruction_text",
+                            text=node.text,
+                            source_tag=tag,
+                            instruction=True,
+                        )
+                    )
+            elif tag in {"t", "delText"} and node.text:
+                emit_segment(
+                    TextSegment(
+                        kind="deleted_text" if in_deleted or tag == "delText" else "text",
+                        text=node.text,
+                        source_tag=tag,
+                        deleted=in_deleted or tag == "delText",
+                        instruction=in_instr,
+                    )
+                )
+            elif node.text and tag not in {"pPr", "rPr", "tblPr", "trPr", "tcPr", "sdtPr", "sdtEndPr"} and not in_deleted and not in_instr:
+                emit_segment(
+                    TextSegment(
+                        kind="text",
+                        text=node.text,
+                        source_tag=tag,
+                    )
+                )
+            for child in list(node):
+                walk(child, in_deleted=in_deleted, in_instr=in_instr)
+            if node.tail and not in_deleted and not in_instr:
+                emit_segment(
+                    TextSegment(
+                        kind="text",
+                        text=node.tail,
+                        source_tag=f"{tag}:tail",
+                    )
+                )
+
+        walk(node)
+        return {
+            "has_tracked_changes": has_tracked_changes,
+            "has_field_codes": has_field_codes,
+            "has_comments": has_comments,
+            "footnote_ids": footnote_ids,
+            "segments": segments,
+        }
 
     def _extract_table(
         self,
@@ -925,12 +1140,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", type=Path, default=None, help="Write the full document-map JSON to this path")
     parser.add_argument("--by-chapter", type=Path, default=None, metavar="DIR", help="Write per-chapter JSON files to this directory")
     parser.add_argument("--term-index", type=Path, default=None, metavar="PATH", help="Write term-index JSON to this path")
+    parser.add_argument("--edit-map", type=Path, default=None, metavar="PATH", help="Write run-aware edit-map JSON to this path")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
-    document_map = parse_document_map(args.docx_path, args.document_id)
+    parser = DocxMapParser(args.docx_path)
+    try:
+        document_map = parser.build(args.document_id or args.docx_path.stem)
+        edit_map = parser.build_edit_map(args.document_id or args.docx_path.stem)
+    finally:
+        parser.close()
     rendered = json.dumps(document_map, ensure_ascii=False, separators=(",", ":"))
     if args.output is not None:
         args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -950,6 +1171,11 @@ def main(argv: list[str] | None = None) -> int:
         args.term_index.parent.mkdir(parents=True, exist_ok=True)
         args.term_index.write_text(
             json.dumps(term_index, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
+        )
+    if args.edit_map is not None:
+        args.edit_map.parent.mkdir(parents=True, exist_ok=True)
+        args.edit_map.write_text(
+            json.dumps(edit_map, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
         )
     return 0
 

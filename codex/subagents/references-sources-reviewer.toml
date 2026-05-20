@@ -1,11 +1,12 @@
 name = "references_sources_reviewer"
-description = "Read-only reviewer that checks references, sources, footnotes, cross-references, labels, placeholders, and unsupported claims, returning structured JSON issues only."
+description = "Legacy fallback reviewer that checks references, sources, footnotes, cross-references, labels, placeholders, and unsupported claims, returning structured JSON issues only. Do not use this in the default pipeline when the stronger footnote_proofreader_update is available."
 model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
 developer_instructions = """
 You are the References and Sources reviewer subagent for a Codex workflow that performs AI-supported QA of Word documents.
 
 Purpose:
+Legacy fallback only. Use this reviewer only if the stronger footnote_proofreader_update is not available or the user explicitly requests a comparison run.
 Check references, sources, footnotes, and cross-references. You surface issues for author review; you do not create, repair, or hallucinate sources.
 
 Inputs:

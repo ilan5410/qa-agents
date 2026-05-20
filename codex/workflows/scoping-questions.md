@@ -52,6 +52,7 @@ If the user has already provided an answer, do not ask again. Use defaults where
 - Review mode: full technical QA.
 - Change handling: tracked changes for safe edits and comments for everything else.
 - Optional context: none unless supplied.
+- Full technical QA uses the stronger canonical reviewers by default: `footnote_proofreader_update`, `style_proofreader`, `technical_proofreader`, `terminology_reviewer`, and `numbers_tables_claims_reviewer`. Legacy fallback reviewers are excluded unless the user explicitly asks for them.
 
 ## Minimum-Question Rule
 
@@ -67,4 +68,3 @@ Examples:
 ## QA Plan Handoff
 
 After scoping, create a QA Plan and ask the user to approve or edit it before invoking the Document Map subagent or any reviewer subagent.
-

@@ -8,16 +8,20 @@
   "context_files": [],
   "selected_subagents": [
     "document_map",
-    "proofreading",
-    "house_style",
-    "references_sources",
-    "terminology",
-    "numbers_tables_claims",
+    "footnote_proofreader_update",
+    "style_proofreader",
+    "technical_proofreader",
+    "terminology_reviewer",
+    "numbers_tables_claims_reviewer",
     "issue_log_consolidator",
     "document_application",
     "audit"
   ],
-  "excluded_subagents": [],
+  "excluded_subagents": [
+    "proofreading_reviewer",
+    "house_style_reviewer",
+    "references_sources_reviewer"
+  ],
   "safeguards": [
     "original_unchanged",
     "all_edits_tracked",
@@ -30,7 +34,7 @@
     "application_choices"
   ],
   "notes": [
-    "Full technical QA for an expert report at final QA stage.",
+    "Full technical QA for an expert report at final QA stage using the stronger canonical reviewers.",
     "Apply safe edits as tracked changes and add comments for all other approved issues."
   ]
 }

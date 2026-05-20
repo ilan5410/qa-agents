@@ -33,8 +33,9 @@ The repo is instruction-first and agent-first. Do not create deterministic Pytho
    - Document Map Runner runs `document_map_parser.py --output --by-chapter --term-index` and writes: `qa_run/working/document-map.json`, `qa_run/working/chapters/<chapter>.json` (one per section), `qa_run/working/term-index.json`. Validates `document-map.json` against `schemas/document-map.schema.json` using jsonschema. Fails loudly on any error; workflow stops until resolved.
    - Document Map reads `document-map.json` and writes `qa_run/working/document-map-summary.md`.
 6. Selected reviewer subagents run according to their scope:
-   - Chapter-level hats (proofreading, house style, references/sources): one subagent per chapter, run in parallel. Each receives only its chapter's data slice.
-   - Full-document hats (terminology, numbers/tables/claims): one subagent for the whole document. Terminology receives the term-index only; numbers receives `numeric_claims` and `tables` only.
+   - Chapter-level hats (footnote_proofreader_update, style_proofreader): one subagent per chapter, run in parallel. Each receives only its chapter's data slice.
+   - Full-document hats (technical_proofreader, terminology_reviewer, numbers_tables_claims_reviewer): one subagent for the whole document. Terminology receives the term-index only; technical proofreader reads the full document map.
+   - Legacy fallback hats (`proofreading_reviewer`, `house_style_reviewer`, `references_sources_reviewer`) are excluded by default because the newer reviewers are stronger.
 7. Chapter-level outputs are merged per hat into `qa_run/working/reviewer-outputs/<hat>-issues.json`. Full-document hat outputs write there directly.
 8. Issue Log Consolidator reads from `qa_run/working/reviewer-outputs/` and creates a consolidated issue log.
 9. User chooses application mode: issue-log-only, comments-only, tracked changes for safe edits and comments for everything else, rerun selected hat, or stop without applying changes.
@@ -48,7 +49,7 @@ The repo is instruction-first and agent-first. Do not create deterministic Pytho
 
 The Orchestrator owns scoping, sequencing, user approval checkpoints, and final delivery. It must create a QA Plan before reviewer work begins and must wait for user approval before proceeding beyond the plan.
 
-When presenting hats to the user, the Orchestrator distinguishes chapter-level hats (proofreading, house style, references/sources) from full-document hats (terminology, numbers/tables/claims) and states the estimated subagent count.
+When presenting hats to the user, the Orchestrator distinguishes canonical chapter-level hats (footnote_proofreader_update, style_proofreader) from canonical full-document hats (technical_proofreader, terminology_reviewer, numbers_tables_claims_reviewer) and states the estimated subagent count. Legacy fallback hats are only shown when the user explicitly requests them.
 
 The Orchestrator must not apply document changes directly. It may create copies, route tasks, collect outputs, and prepare summaries.
 
@@ -64,9 +65,9 @@ The Document Map subagent reads the pre-built `document-map.json` and produces a
 
 Reviewer subagents perform focused QA review. They must be read-only and must return structured JSON issues only.
 
-**Chapter-level hats** receive a single chapter pack containing only that chapter's data slice (paragraphs for proofreading and house style; references and footnotes for references/sources). They do not receive the full document map.
+**Chapter-level hats** receive a single chapter pack containing only that chapter's data slice (paragraphs plus footnote map for footnote_proofreader_update; paragraphs plus optional style context for style_proofreader). They do not receive the full document map.
 
-**Full-document hats** receive a single pack. The terminology hat receives the term-index (term occurrences and locations) — not raw paragraphs. The numbers hat receives only `numeric_claims` and `tables`.
+**Full-document hats** receive a single pack. The technical proofreader receives the full document map. The terminology hat receives the term-index (term occurrences and locations) — not raw paragraphs. The numbers hat receives only `numeric_claims` and `tables`.
 
 Each issue must distinguish whether it is:
 - `safe_edit`

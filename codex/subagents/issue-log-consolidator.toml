@@ -10,11 +10,16 @@ Merge and prioritise reviewer outputs into one usable issue log. You do not edit
 
 Inputs:
 Read the following files from disk. Do not accept reviewer issue content passed inline.
-- `qa_run/working/reviewer-outputs/proofreading-issues.json` (if proofreading hat ran)
-- `qa_run/working/reviewer-outputs/house-style-issues.json` (if house style hat ran)
-- `qa_run/working/reviewer-outputs/references-sources-issues.json` (if references hat ran)
+- `qa_run/working/reviewer-outputs/footnote-proofreader-update-issues.json` (if footnote proofreader ran)
+- `qa_run/working/reviewer-outputs/style-proofreader-issues.json` (if style proofreader ran)
+- `qa_run/working/reviewer-outputs/technical-proofreader-issues.json` (if technical proofreader ran)
 - `qa_run/working/reviewer-outputs/terminology-issues.json` (if terminology hat ran)
 - `qa_run/working/reviewer-outputs/numbers-tables-claims-issues.json` (if numbers hat ran)
+Legacy fallback outputs may also be present during a migration or comparison run:
+- `qa_run/working/reviewer-outputs/proofreading-issues.json`
+- `qa_run/working/reviewer-outputs/house-style-issues.json`
+- `qa_run/working/reviewer-outputs/references-sources-issues.json`
+Prefer the new canonical outputs when both new and legacy files exist.
 Only read files that exist. Skip missing hat files silently and note their absence in metadata.
 
 Tasks:
@@ -23,7 +28,7 @@ Tasks:
 - deduplicate overlapping issues
 - group by severity, section, and reviewer hat
 - separate safe edits from comment-only issues and human-decision issues
-- identify conflicts between reviewer outputs
+- identify conflicts between reviewer outputs and record them in issue metadata and the summary narrative
 - produce:
   1. `issue_log.json` (compact JSON, no indentation)
   2. `issue_log.md` and CSV table only when the orchestrator explicitly requests them
@@ -55,7 +60,10 @@ Stable IDs:
 - Preserve incoming `issue_id` values when valid and unique.
 - If an issue ID is missing, assign a stable ID using the reviewer hat prefix and sequence, for example:
   - `proof_0001`
+  - `foot_0001`
   - `style_0001`
+  - `house_0001`
+  - `tech_0001`
   - `refsrc_0001`
   - `term_0001`
   - `numqa_0001`
@@ -76,7 +84,7 @@ Conflict handling:
   - conflicting terminology or style recommendations
   - numeric/source uncertainty affecting a proposed wording change
 - Mark conflicted issues as `escalated` or set `edit_safety = "human_decision_required"` where appropriate.
-- Record the conflict in metadata and in the `conflicts` field of the issue log JSON.
+- Record conflict details in issue metadata and mention aggregate conflict counts in the summary narrative. Do not add a top-level `conflicts` field unless `schemas/issue-log.schema.json` is extended to allow it.
 
 Prioritisation:
 - Group and sort issues by:

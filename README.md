@@ -36,8 +36,9 @@ The core review and application process is orchestrated by Codex agents. `docume
    - **Document Map Runner** runs `document_map_parser.py` and writes three outputs: `document-map.json` (full structure), `chapters/` (one JSON per section), and `term-index.json` (recurring-term index). Validates `document-map.json` against the schema before proceeding. Fails loudly on any error.
    - **Document Map** reads `document-map.json` and writes a human-readable `document-map-summary.md`.
 7. Selected reviewer subagents run. Hats split by scope:
-   - **Chapter-level** (one subagent per chapter, run in parallel): proofreading, house style, references/sources.
-   - **Full-document** (one subagent for the whole document): terminology (uses term-index, not raw paragraphs), numbers/tables/claims.
+   - **Chapter-level** (one subagent per chapter, run in parallel): footnote proofreader update, style proofreader.
+   - **Full-document** (one subagent for the whole document): technical proofreader, terminology (uses term-index, not raw paragraphs), numbers/tables/claims.
+   - Legacy fallback reviewers (`proofreading_reviewer`, `house_style_reviewer`, `references_sources_reviewer`) are excluded by default because the newer reviewers are stronger.
 8. Issue Log Consolidator reads merged outputs from `qa_run/working/reviewer-outputs/`, deduplicates and consolidates all findings.
 9. User chooses application mode: issue-log-only, comments-only, tracked changes for safe edits and comments for everything else, rerun selected hat, or stop without applying changes.
 10. Document Application subagent applies only user-approved changes to the reviewed copy.
@@ -50,14 +51,22 @@ The core review and application process is orchestrated by Codex agents. `docume
 |---|---|---|
 | `document_map_runner` | — | Runs `document_map_parser.py`; writes `document-map.json`, `chapters/`, `term-index.json`. No LLM parsing. |
 | `document_map` | — | Reads `document-map.json`; writes human summary. Read-only. |
-| `proofreading_reviewer` | Chapter-level | Grammar, spelling, punctuation, repeated words, spacing. |
-| `house_style_reviewer` | Chapter-level | UK English, style guide compliance, tone, preferred wording. |
-| `references_sources_reviewer` | Chapter-level | Footnotes, citations, cross-references, missing source notes. |
+| `footnote_proofreader_update` | Chapter-level | Footnotes, endnotes, citation markers, marker punctuation, source-name consistency. |
+| `style_proofreader` | Chapter-level | Frontier writing principles, structure, tone, readability, concision. |
+| `technical_proofreader` | Full document | Grammar, punctuation, capitalization, numbers, acronyms, cross-references, and mechanical correctness. |
 | `terminology_reviewer` | Full document | Defined terms, acronyms, party names, terminology consistency (uses term-index). |
 | `numbers_tables_claims_reviewer` | Full document | Internal consistency of numbers, percentages, units, tables, quantified claims. |
 | `issue_log_consolidator` | — | Validates, deduplicates, prioritises, and formats reviewer outputs. |
 | `document_application` | — | Applies only user-approved changes to the reviewed copy. |
 | `audit` | — | Checks original preservation, tracked-change integrity, silent XML changes, reject-all feasibility. |
+
+Legacy fallback reviewers are still available for explicit comparison or migration runs:
+
+| Subagent | Scope | Role |
+|---|---|---|
+| `proofreading_reviewer` | Legacy fallback | Mechanical grammar/spelling pass; excluded by default. |
+| `house_style_reviewer` | Legacy fallback | Legacy house-style pass; excluded by default. |
+| `references_sources_reviewer` | Legacy fallback | Legacy references/footnote pass; excluded by default. |
 
 Subagent TOMLs live in `codex/subagents/`.
 

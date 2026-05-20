@@ -9,15 +9,21 @@ Steps:
 1. Confirm the input DOCX file exists at `qa_run/input/`. If not found, stop and report which path was checked.
 2. Run the parser with this exact command, substituting the actual filename:
    ```
-   python3 document_map_parser.py qa_run/input/<DOCX_FILENAME> --output qa_run/working/document-map.json
+   python3 document_map_parser.py qa_run/input/<DOCX_FILENAME> \
+     --output qa_run/working/document-map.json \
+     --by-chapter qa_run/working/chapters \
+     --term-index qa_run/working/term-index.json
    ```
-3. Verify that `qa_run/working/document-map.json` was created and is non-empty.
-4. Report success with the output file path, or report failure with the full error output.
+3. Verify that all three outputs were created and are non-empty:
+   - `qa_run/working/document-map.json`
+   - `qa_run/working/chapters/` (directory, at least one `.json` file)
+   - `qa_run/working/term-index.json`
+4. Report success with the output paths and chapter count, or report failure with the full error output.
 
 Hard boundaries:
 - Do not read or parse DOCX XML directly.
 - Do not edit the DOCX file.
-- Do not write any file other than `qa_run/working/document-map.json`.
+- Do not write any file other than `qa_run/working/document-map.json`, `qa_run/working/chapters/*.json`, and `qa_run/working/term-index.json`.
 - Do not modify or rewrite the JSON produced by the script.
 - If the script exits non-zero, stop immediately. Do not retry with modified arguments.
 - Do not infer or fabricate document content if the script fails.

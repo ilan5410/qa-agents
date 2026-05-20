@@ -55,13 +55,15 @@ Workflow:
    - `qa_run/working/reviewer-packs/` (any files)
    - `qa_run/outputs/` (any files)
    - any `qa_run/working/docx_package_*` directories
+   - `qa_run/working/chapters/` (any files)
+   - `qa_run/working/term-index.json`
    If any exist, list them for the user and ask what to do: delete all and start fresh, keep and resume from a specific step, or archive them first (rename with a timestamp suffix). When the user chooses delete, remove the listed artifacts before continuing. Treat the full previous-run cleanup set as the union of the files and directories above, plus any stale reviewer output files under `reviewer-packs/` and any stale output files under `qa_run/outputs/` from the same run.
 2. Confirm that the original document will be preserved.
 3. Identify or create the reviewed copy path for later application work, but do not edit document content.
 4. Create a QA Plan matching `schemas/qa-plan.schema.json`.
 5. Ask the user to approve or edit the QA Plan before continuing.
 6. After approval, extract the document structure in two steps:
-   6a. Invoke the Document Map Runner subagent. It runs `document_map_parser.py` and writes `qa_run/working/document-map.json`. If it reports FAILURE, stop and show the user the exact error before proceeding.
+   6a. Invoke the Document Map Runner subagent. It runs `document_map_parser.py` and writes three outputs: `qa_run/working/document-map.json` (full map), `qa_run/working/chapters/` (one JSON per section), and `qa_run/working/term-index.json` (recurring-term index for terminology review). If it reports FAILURE, stop and show the user the exact error before proceeding.
    6b. Invoke the Document Map subagent. It reads `qa_run/working/document-map.json` and writes `qa_run/working/document-map-summary.md`.
 7. Invoke selected reviewer subagents. Available reviewer hats are:
    - proofreading
@@ -69,7 +71,17 @@ Workflow:
    - references/sources
    - terminology
    - numbers/tables/claims
-   When creating a reviewer pack for each hat, include only hat-specific data and a `document_map_path` field pointing to the saved `qa_run/working/document-map.json`. Do not embed the full paragraph set in the pack. Do not embed the QA Plan in the pack. Reviewers read paragraph and heading content directly from document-map.json via `document_map_path`. Include only the data slice each hat actually needs: numeric_claims and tables for numbers hat; footnotes and references for references hat; headings and the document_map_path for the rest.
+   Reviewer pack rules — use exactly the fields listed, nothing more. Do not embed the QA Plan.
+
+   Proofreading (chapter-level): create one pack per chapter file in `qa_run/working/chapters/`. Each pack: `chapter_id`, `section_id`, `heading`, `paragraphs` array from that chapter, `document_map_path` → `qa_run/working/document-map.json`. Run one proofreading subagent per chapter.
+
+   House style (chapter-level): same as proofreading — one pack per chapter, `paragraphs` array only, `document_map_path`.
+
+   References/sources (chapter-level): one pack per chapter — `chapter_id`, `section_id`, `references` array from that chapter, plus the full `footnotes` array from `document-map.json` for resolution, `document_map_path`.
+
+   Terminology (full document, index-only): one pack — contents of `qa_run/working/term-index.json` (the `terms` dict and `term_count`), `document_map_path`. Do NOT embed paragraphs or the full document map.
+
+   Numbers/tables/claims (full document): one pack — `numeric_claims` and `tables` arrays from `document-map.json` only. No paragraph prose. `document_map_path`.
 8. Require reviewer subagents to return structured JSON issues only, matching `schemas/issue.schema.json`. Reviewer outputs must be compact JSON with no indentation.
 9. Invoke the Issue Log Consolidator subagent to deduplicate, prioritise, and normalise reviewer findings into an issue log matching `schemas/issue-log.schema.json`. Pass reviewer output files only. Do not pass document-map.json to the consolidator.
 10. After consolidation, present the user with a brief summary from the issue-log.json `summary` field (counts by severity and reviewer hat). Then ask the user to choose one or more next actions:

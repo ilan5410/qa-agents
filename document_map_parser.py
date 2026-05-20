@@ -5,7 +5,7 @@ import json
 import re
 import sys
 import zipfile
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator
@@ -52,6 +52,11 @@ SOURCE_NOTE_RE = re.compile(
 TOC_STYLE_RE = re.compile(r"^TOC\d*$", re.IGNORECASE)
 URL_RE = re.compile(r"https?://\S+|mailto:\S+", re.IGNORECASE)
 FOOTNOTE_MARKER_RE = re.compile(r"\[fn:(\d+)\]")
+
+LIST_MARKER_RE = re.compile(r"^\s*\d{1,2}[.)]\s")
+TERM_ACRONYM_RE = re.compile(r"\b[A-Z]{2,}\b")
+TERM_PHRASE_RE = re.compile(r"\b[A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)+\b")
+TERM_HYPHEN_RE = re.compile(r"\b[a-z]{2,}-[a-z]{2,}\b")
 
 
 @dataclass(frozen=True)
@@ -644,14 +649,16 @@ class DocxMapParser:
                 value = match.group(0)
                 if not re.search(r"\d", value):
                     continue
-                next_id += 1
-                unit = "%"
                 if value.startswith(("£", "$", "€")):
                     unit = value[0]
                 elif value.endswith("%"):
                     unit = "%"
                 else:
                     unit = None
+                # Skip bare list markers like "1. " or "2) " at sentence start
+                if unit is None and LIST_MARKER_RE.match(sentence) and sentence.lstrip().startswith(value):
+                    continue
+                next_id += 1
                 claims.append(
                     {
                         "claim_id": f"num_{next_id:04d}",
@@ -659,7 +666,7 @@ class DocxMapParser:
                         "raw_text": value,
                         "number": self._claim_number(value),
                         "unit": unit,
-                        "surrounding_sentence": compact_summary(sentence, 280),
+                        "surrounding_sentence": compact_summary(sentence, 120),
                         "nearby_table_or_figure_if_available": table_context
                         or self._nearby_table_or_figure(sentence),
                     }
@@ -792,11 +799,101 @@ def parse_document_map(docx_path: Path, document_id: str | None = None) -> dict:
         parser.close()
 
 
+def split_by_chapter(document_map: dict) -> dict[str, dict]:
+    """Return per-chapter dicts keyed by chapter filename stem (e.g. 'ch_0001_introduction')."""
+    headings = document_map.get("headings", [])
+    paragraphs = document_map.get("paragraphs", [])
+    tables = document_map.get("tables", [])
+    numeric_claims = document_map.get("numeric_claims", [])
+    references = document_map.get("references", [])
+    document_id = document_map.get("document_id", "")
+    source_path = document_map.get("source_docx_path", "")
+
+    # section_id → first heading info
+    section_heading: dict[str, dict] = {}
+    for h in headings:
+        sid = h.get("section_id", "")
+        if sid not in section_heading:
+            section_heading[sid] = h
+
+    # paragraph_id → section_id
+    para_section: dict[str, str] = {p["paragraph_id"]: p["section_id"] for p in paragraphs}
+
+    # table_id → section_id  (location = "{section_id}/{table_id}")
+    table_section: dict[str, str] = {}
+    for t in tables:
+        loc = t.get("location", "")
+        table_section[t["id"]] = loc.split("/")[0] if "/" in loc else "sec_0000"
+
+    def claim_section(claim: dict) -> str:
+        loc = claim.get("location", "")
+        return para_section.get(loc) or table_section.get(loc) or "sec_0000"
+
+    # Ordered unique section_ids (preserve document order via headings)
+    seen: set[str] = set()
+    ordered_sections: list[str] = []
+    if any(p["section_id"] == "sec_0000" for p in paragraphs):
+        ordered_sections.append("sec_0000")
+        seen.add("sec_0000")
+    for h in headings:
+        sid = h["section_id"]
+        if sid not in seen:
+            ordered_sections.append(sid)
+            seen.add(sid)
+
+    chapters: dict[str, dict] = {}
+    for i, sid in enumerate(ordered_sections, start=1):
+        h_info = section_heading.get(sid, {})
+        heading_text = h_info.get("text", sid)
+        slug = re.sub(r"[^a-z0-9]+", "-", heading_text.lower())[:40].strip("-")
+        key = f"ch_{i:04d}_{slug}"
+        chapters[key] = {
+            "chapter_id": f"ch_{i:04d}",
+            "section_id": sid,
+            "heading": heading_text,
+            "heading_path": h_info.get("heading_path", []),
+            "document_id": document_id,
+            "source_docx_path": source_path,
+            "paragraphs": [p for p in paragraphs if p["section_id"] == sid],
+            "tables": [t for t in tables if table_section.get(t["id"]) == sid],
+            "numeric_claims": [c for c in numeric_claims if claim_section(c) == sid],
+            "references": [r for r in references if r.get("section_id") == sid],
+        }
+    return chapters
+
+
+def build_term_index(document_map: dict) -> dict:
+    """Extract significant recurring terms from paragraph text for terminology review."""
+    paragraphs = document_map.get("paragraphs", [])
+    occurrences: dict[str, list[dict]] = defaultdict(list)
+    for para in paragraphs:
+        text = para.get("text", "")
+        pid = para.get("paragraph_id", "")
+        sid = para.get("section_id", "")
+        for pattern in (TERM_ACRONYM_RE, TERM_PHRASE_RE, TERM_HYPHEN_RE):
+            for match in pattern.finditer(text):
+                term = match.group(0)
+                start = max(0, match.start() - 30)
+                end = min(len(text), match.end() + 30)
+                snippet = text[start:end].strip()
+                occurrences[term].append({"paragraph_id": pid, "section_id": sid, "snippet": snippet})
+    # Keep only terms appearing 2+ times
+    filtered = {t: locs for t, locs in occurrences.items() if len(locs) >= 2}
+    return {
+        "document_id": document_map.get("document_id", ""),
+        "source_docx_path": document_map.get("source_docx_path", ""),
+        "term_count": len(filtered),
+        "terms": filtered,
+    }
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Extract a document map from a DOCX file.")
     parser.add_argument("docx_path", type=Path, help="Path to the source DOCX file")
     parser.add_argument("--document-id", default=None, help="Document id to embed in the output JSON")
-    parser.add_argument("--output", type=Path, default=None, help="Write the JSON output to this path")
+    parser.add_argument("--output", type=Path, default=None, help="Write the full document-map JSON to this path")
+    parser.add_argument("--by-chapter", type=Path, default=None, metavar="DIR", help="Write per-chapter JSON files to this directory")
+    parser.add_argument("--term-index", type=Path, default=None, metavar="PATH", help="Write term-index JSON to this path")
     return parser
 
 
@@ -810,6 +907,19 @@ def main(argv: list[str] | None = None) -> int:
     else:
         sys.stdout.write(rendered)
         sys.stdout.write("\n")
+    if args.by_chapter is not None:
+        chapters = split_by_chapter(document_map)
+        args.by_chapter.mkdir(parents=True, exist_ok=True)
+        for chapter_key, chapter_data in chapters.items():
+            (args.by_chapter / f"{chapter_key}.json").write_text(
+                json.dumps(chapter_data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
+            )
+    if args.term_index is not None:
+        term_index = build_term_index(document_map)
+        args.term_index.parent.mkdir(parents=True, exist_ok=True)
+        args.term_index.write_text(
+            json.dumps(term_index, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
+        )
     return 0
 
 

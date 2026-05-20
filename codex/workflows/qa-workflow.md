@@ -21,6 +21,8 @@ This is the fixed workflow for the Codex Word QA process. README.md, AGENTS.md, 
    - `qa_run/working/reviewer-packs/` (any files)
    - `qa_run/outputs/` (any files)
    - any `qa_run/working/docx_package_*` directories
+   - `qa_run/working/chapters/` (any files)
+   - `qa_run/working/term-index.json`
 4. Orchestrator creates a QA Plan.
 5. User approves or edits the QA Plan before any mapping or reviewer work begins.
 6a. Document Map Runner subagent runs `document_map_parser.py` and writes `qa_run/working/document-map.json`. Fails loudly on error; orchestrator stops and reports to user.

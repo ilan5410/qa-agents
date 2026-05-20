@@ -689,7 +689,6 @@ def apply_application(
                 if "[fn:" in current_text and proposed_text == current_text.replace("[fn:", " [fn:"):
                     marker_id = current_text.split("[fn:", 1)[1].split("]", 1)[0]
                     if _insert_space_before_footnote(node, marker_id, next_change_id, f"ChatGPT [{issue_id}]"):
-                        applied.append(issue_id)
                         next_change_id += 1
                         applied_here = True
                         applied_locations += 1
@@ -700,8 +699,6 @@ def apply_application(
                 if changed:
                     applied_here = True
                     applied_locations += 1
-            if applied_here:
-                applied.append(issue_id)
             for fid in foot_ids:
                 node = footnote_lookup.get(fid)
                 if node is None:
@@ -712,6 +709,8 @@ def apply_application(
                 if changed:
                     applied_here = True
                     applied_locations += 1
+            if applied_here:
+                applied.append(issue_id)
             if not applied_here:
                 if current_text:
                     for node in _find_any_paragraph_matches(body_root, current_text):

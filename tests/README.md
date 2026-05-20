@@ -131,6 +131,8 @@ Pass criteria:
 - Every comment or tracked change includes the relevant issue ID where technically possible.
 - Numeric issues are not automatically corrected.
 - `application_log.json` records applied, skipped, rejected, unresolved, and comment-only issue IDs.
+- `application_log.json` records a reject-all simulation result.
+- Rejecting all tracked changes in the reviewed copy restores the original visible text.
 - `unresolved_issues.md` is produced where relevant.
 - The user-facing application summary includes counts, safety rules, output path, and clear choices: apply recommended plan, comments only, issue log only, choose issue by issue, or stop here.
 - The raw application-plan JSON is not used as the primary user approval surface.
@@ -141,6 +143,7 @@ Fail criteria:
 - Unapproved or rejected issues are applied.
 - Comments or changes lack issue IDs.
 - Text is silently replaced.
+- Reject-all simulation leaves visible text differences against the original.
 - Numbers are corrected without explicit approved wording.
 - The Orchestrator asks the user to approve raw JSON without a friendly summary.
 
@@ -156,6 +159,7 @@ Pass criteria:
 - Audit returns JSON matching `schemas/audit-report.schema.json`.
 - Audit detects silent changes and returns `FAIL`.
 - Audit detects a rejected issue applied and returns `FAIL`.
+- Audit consumes or independently validates the reject-all simulation result.
 - Audit warns if reject-all simulation is unavailable.
 - Audit confirms original preservation where evidence is available.
 - Audit reports limitations clearly.

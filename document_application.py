@@ -175,6 +175,113 @@ def _visible_text_from_container(container: etree._Element) -> str:
     return "".join(piece.text for piece in pieces)
 
 
+def _is_visible_text_part(name: str) -> bool:
+    if name in {"word/document.xml", "word/footnotes.xml", "word/endnotes.xml"}:
+        return True
+    if not name.startswith("word/") or not name.endswith(".xml"):
+        return False
+    part_name = Path(name).name
+    return (part_name.startswith("header") or part_name.startswith("footer")) and part_name[:-4][-1:].isdigit()
+
+
+def _text_for_reject_all_comparison(root: etree._Element, reject_all_changes: bool) -> str:
+    chunks: list[str] = []
+
+    def walk(node: etree._Element, in_deleted: bool = False, in_instr: bool = False) -> None:
+        tag = _visible_tag_name(node)
+        if tag in {"ins", "moveTo"} and reject_all_changes:
+            return
+        if tag in {"del", "moveFrom"}:
+            in_deleted = True
+        if tag == "instrText":
+            in_instr = True
+        if tag == "footnoteReference":
+            marker = node.get(w("id"))
+            chunks.append(f"[fn:{marker}]" if marker is not None else "[fn:]")
+            return
+        if tag == "endnoteReference":
+            marker = node.get(w("id"))
+            chunks.append(f"[en:{marker}]" if marker is not None else "[en:]")
+            return
+        if tag == "t" and node.text and not in_instr and (not in_deleted or reject_all_changes):
+            chunks.append(node.text)
+        if tag == "delText" and node.text and reject_all_changes and in_deleted and not in_instr:
+            chunks.append(node.text)
+        for child in list(node):
+            walk(child, in_deleted=in_deleted, in_instr=in_instr)
+
+    walk(root)
+    return "".join(chunks)
+
+
+def _docx_text_parts_for_reject_all(path: Path, reject_all_changes: bool) -> dict[str, str]:
+    parts: dict[str, str] = {}
+    with zipfile.ZipFile(path, "r") as zf:
+        for name in sorted(zf.namelist()):
+            if not _is_visible_text_part(name):
+                continue
+            try:
+                root = _read_xml(zf, name)
+            except Exception:
+                parts[name] = "<unreadable-xml>"
+                continue
+            text = _text_for_reject_all_comparison(root, reject_all_changes=reject_all_changes)
+            if text:
+                parts[name] = text
+    return parts
+
+
+def _difference_excerpt(left: str, right: str, context: int = 80) -> dict[str, str | int]:
+    prefix = 0
+    max_prefix = min(len(left), len(right))
+    while prefix < max_prefix and left[prefix] == right[prefix]:
+        prefix += 1
+    suffix = 0
+    max_suffix = min(len(left) - prefix, len(right) - prefix)
+    while suffix < max_suffix and left[len(left) - suffix - 1] == right[len(right) - suffix - 1]:
+        suffix += 1
+    left_end = len(left) - suffix if suffix else len(left)
+    right_end = len(right) - suffix if suffix else len(right)
+    start = max(0, prefix - context)
+    return {
+        "first_difference_offset": prefix,
+        "original_excerpt": left[start:min(len(left), left_end + context)],
+        "reviewed_after_reject_all_excerpt": right[start:min(len(right), right_end + context)],
+    }
+
+
+def _verify_reject_all_matches_original(source_docx: Path, reviewed_docx: Path) -> dict:
+    original_parts = _docx_text_parts_for_reject_all(source_docx, reject_all_changes=False)
+    reviewed_parts = _docx_text_parts_for_reject_all(reviewed_docx, reject_all_changes=True)
+    differences = []
+    for part in sorted(set(original_parts) | set(reviewed_parts)):
+        original_text = original_parts.get(part, "")
+        reviewed_text = reviewed_parts.get(part, "")
+        if original_text == reviewed_text:
+            continue
+        differences.append(
+            {
+                "part": part,
+                "original_length": len(original_text),
+                "reviewed_after_reject_all_length": len(reviewed_text),
+                **_difference_excerpt(original_text, reviewed_text),
+            }
+        )
+    if differences:
+        return {
+            "status": "FAIL",
+            "method": "visible_text_after_reject_all_by_docx_part",
+            "details": "Reject-all simulation found visible text differences after all tracked changes were rejected.",
+            "differences": differences,
+        }
+    return {
+        "status": "PASS",
+        "method": "visible_text_after_reject_all_by_docx_part",
+        "details": "Reviewed document visible text matches the original after simulated reject-all.",
+        "differences": [],
+    }
+
+
 def _cleanup_empty_runs(container: etree._Element) -> None:
     for child in list(container):
         if _visible_tag_name(child) != "r":
@@ -746,6 +853,10 @@ def apply_application(
                     rel_path = abs_path.relative_to(unzip_dir)
                     zout.write(abs_path, rel_path.as_posix())
 
+    reject_all_simulation = _verify_reject_all_matches_original(source_docx, output_docx)
+    if reject_all_simulation["status"] == "FAIL":
+        failures.append(reject_all_simulation["details"])
+
     log = {
         "source_original_path": str(source_docx.resolve()),
         "working_copy_path": str(output_docx.resolve()),
@@ -760,6 +871,8 @@ def apply_application(
         "rejected_issue_ids": plan.get("rejected_issue_ids", []),
         "fallback_decisions": warnings,
         "created_output_files": [str(output_docx.resolve()), str(output_log.resolve()), str(unresolved_path.resolve())],
+        "reject_all_simulation": reject_all_simulation,
+        "silent_text_changes_detected": reject_all_simulation["status"] == "FAIL",
         "warnings": warnings,
         "failures": failures,
         "document_map_path": str(document_map.resolve()),
@@ -801,7 +914,7 @@ def main() -> int:
     args.application_log.parent.mkdir(parents=True, exist_ok=True)
     args.unresolved.parent.mkdir(parents=True, exist_ok=True)
 
-    apply_application(
+    log = apply_application(
         source_docx=args.source_docx,
         output_docx=args.output_docx,
         issue_log=args.issue_log,
@@ -810,7 +923,7 @@ def main() -> int:
         output_log=args.application_log,
         unresolved_path=args.unresolved,
     )
-    return 0
+    return 1 if log.get("failures") else 0
 
 
 if __name__ == "__main__":

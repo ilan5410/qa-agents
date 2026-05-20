@@ -70,6 +70,8 @@ Produce `application_log.json` with:
 - whether tracked changes were requested
 - whether tracked changes were produced
 - fallback decisions
+- reject-all simulation result
+- whether silent text changes were detected
 - created output files
 - warnings
 - failures
@@ -92,13 +94,16 @@ Workflow:
 9. If tracked changes are requested but cannot be guaranteed, stop and report the limitation unless the user has approved comments-only fallback.
 10. Apply approved comments and approved safe tracked changes only to the reviewed copy.
 11. Include issue IDs in every comment and change annotation where the document format permits.
-12. Write `application_log.json`.
-13. Write `unresolved_issues.md` if relevant.
-14. Return the reviewed `.docx`, application log, and unresolved issues note.
+12. Simulate rejecting all tracked changes in the reviewed copy and compare the resulting visible text to the original document.
+13. If any visible text difference remains after reject-all, record a failure in `application_log.json`; treat it as evidence of an untracked/silent edit.
+14. Write `application_log.json`.
+15. Write `unresolved_issues.md` if relevant.
+16. Return the reviewed `.docx`, application log, and unresolved issues note.
 
 Quality bar:
 - Preserve the original document exactly.
 - Prefer stopping over producing unsafe or silent edits.
 - Make every applied action traceable to an approved issue ID.
 - Keep unresolved issues visible rather than guessing.
+- A reviewed document is not safe if reject-all does not restore the original visible text.
 """

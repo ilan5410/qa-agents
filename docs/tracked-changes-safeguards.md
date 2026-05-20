@@ -57,6 +57,19 @@ The workflow may fall back to comments-only only after the user explicitly appro
 
 Direct text replacement without tracked-change visibility is not allowed.
 
+## Reject-All Safety Gate
+
+After document application, the reviewed copy must be checked by simulating reject-all tracked changes and comparing the resulting visible text to the original document.
+
+If any visible text difference remains after reject-all, the workflow must treat it as an untracked/silent edit:
+
+- record the failed reject-all simulation in `application_log.json`
+- set `silent_text_changes_detected` to true
+- return a non-zero application status for deterministic application runs
+- require audit to return `FAIL`
+
+Comments and tracked-change markup may change the package, but they must not change the reject-all visible text baseline.
+
 ## Application Log
 
 The Document Application subagent must produce an application log that records:
@@ -73,6 +86,8 @@ The Document Application subagent must produce an application log that records:
 - whether tracked changes were requested
 - whether tracked changes were produced
 - fallback decisions
+- reject-all simulation result
+- whether silent text changes were detected
 - warnings
 - failures
 
@@ -103,4 +118,3 @@ The audit must return `WARN` if:
 - some non-critical checks could not be completed, but no silent changes were detected
 
 If the audit fails, the workflow should recommend reverting to the original and reapplying through a safer mode.
-

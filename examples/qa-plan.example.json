@@ -1,0 +1,36 @@
+{
+  "document_path": "C:/workspace/input/original.docx",
+  "working_copy_path": "C:/workspace/output/original.reviewed.docx",
+  "output_type": "expert_report",
+  "stage": "final_qa",
+  "review_mode": "full_technical_qa",
+  "modification_mode": "tracked_changes_for_safe_edits_and_comments",
+  "context_files": [],
+  "selected_subagents": [
+    "document_map",
+    "proofreading",
+    "house_style",
+    "references_sources",
+    "terminology",
+    "numbers_tables_claims",
+    "issue_log_consolidator",
+    "document_application",
+    "audit"
+  ],
+  "excluded_subagents": [],
+  "safeguards": [
+    "original_unchanged",
+    "all_edits_tracked",
+    "no_silent_xml_changes",
+    "reject_all_simulation",
+    "issue_log_reconciliation"
+  ],
+  "approval_required": [
+    "qa_plan",
+    "application_choices"
+  ],
+  "notes": [
+    "Full technical QA for an expert report at final QA stage.",
+    "Apply safe edits as tracked changes and add comments for all other approved issues."
+  ]
+}

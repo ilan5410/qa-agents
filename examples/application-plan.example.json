@@ -1,0 +1,15 @@
+{
+  "accepted_issue_ids": [],
+  "comment_only_issue_ids": ["issue-001"],
+  "rejected_issue_ids": [],
+  "escalated_issue_ids": [],
+  "requested_mode": "comments_only",
+  "application_rules": {
+    "apply_only_approved_issues": true,
+    "preserve_original": true,
+    "modify_reviewed_copy_only": true,
+    "no_silent_text_changes": true,
+    "stop_if_tracked_changes_unavailable": true
+  },
+  "output_docx_path": "C:/workspace/output/original.reviewed.docx"
+}

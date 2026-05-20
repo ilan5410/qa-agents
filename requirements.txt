@@ -1,0 +1,2 @@
+# Reserved for lightweight validation tooling later.
+# Example future dependency: jsonschema

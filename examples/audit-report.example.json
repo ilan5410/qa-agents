@@ -1,0 +1,35 @@
+{
+  "audit_status": "PASS",
+  "original_unchanged": {
+    "status": "PASS",
+    "details": "The original DOCX checksum matches the pre-workflow checksum."
+  },
+  "all_edits_tracked": {
+    "status": "NOT_RUN",
+    "details": "No textual edits were applied; comments-only mode was requested."
+  },
+  "silent_xml_changes_detected": {
+    "status": "PASS",
+    "details": "No unexpected document XML changes were detected."
+  },
+  "reject_all_simulation": {
+    "status": "NOT_RUN",
+    "details": "Reject-all simulation was not applicable because no tracked textual edits were applied."
+  },
+  "issue_log_reconciliation": {
+    "status": "PASS",
+    "details": "The single approved comment-only issue is represented in the reviewed copy."
+  },
+  "changed_parts": [
+    {
+      "part": "word/comments.xml",
+      "change_summary": "Added one author comment for issue-001.",
+      "expected": true
+    }
+  ],
+  "warnings": [],
+  "failures": [],
+  "recommendations": [
+    "Ask the author to confirm the 12% figure before any textual edit is applied."
+  ]
+}

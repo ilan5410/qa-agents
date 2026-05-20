@@ -1,0 +1,27 @@
+{
+  "issue_id": "issue-001",
+  "reviewer_hat": "numeric_reviewer",
+  "location": {
+    "section_id": "sec-1",
+    "heading_path": ["Executive Summary"],
+    "paragraph_id": "p-001",
+    "page_or_location_if_available": "page 1"
+  },
+  "severity": "medium",
+  "confidence": "medium",
+  "issue_type": "numeric_consistency",
+  "current_text": "Revenue increased by 12% in 2025.",
+  "proposed_change": null,
+  "rationale": "The paragraph claim should be checked against the quarterly revenue table before editing.",
+  "recommended_action": "Add an author comment requesting confirmation of the 12% figure.",
+  "edit_safety": "comment_only",
+  "status": "proposed",
+  "source": {
+    "subagent": "numeric_reviewer",
+    "document_id": "doc-001",
+    "source_issue_ids": []
+  },
+  "metadata": {
+    "related_claim_id": "claim-001"
+  }
+}

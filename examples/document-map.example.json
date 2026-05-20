@@ -1,0 +1,55 @@
+{
+  "document_id": "doc-001",
+  "source_docx_path": "C:/workspace/input/original.docx",
+  "headings": [
+    {
+      "section_id": "sec-1",
+      "heading_path": ["Executive Summary"],
+      "text": "Executive Summary",
+      "level": 1,
+      "page_or_location_if_available": "page 1"
+    }
+  ],
+  "paragraphs": [
+    {
+      "paragraph_id": "p-001",
+      "section_id": "sec-1",
+      "heading_path": ["Executive Summary"],
+      "text": "Revenue increased by 12% in 2025.",
+      "page_or_location_if_available": "page 1",
+      "style_if_available": "Normal"
+    }
+  ],
+  "tables": [
+    {
+      "id": "table-001",
+      "location": "page 2",
+      "summary": "Quarterly revenue by region."
+    }
+  ],
+  "footnotes": [],
+  "references": [
+    {
+      "id": "ref-001",
+      "location": "page 4",
+      "summary": "Reference to Appendix A."
+    }
+  ],
+  "numeric_claims": [
+    {
+      "claim_id": "claim-001",
+      "location": "p-001",
+      "raw_text": "12%",
+      "number": 12,
+      "unit": "%",
+      "surrounding_sentence": "Revenue increased by 12% in 2025.",
+      "nearby_table_or_figure_if_available": "table-001"
+    }
+  ],
+  "extraction_notes": [
+    "Page locations are approximate."
+  ],
+  "limitations": [
+    "Tracked changes, if present, were not interpreted as accepted text."
+  ]
+}

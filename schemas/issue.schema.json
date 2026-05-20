@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/issue.schema.json",
+  "title": "QA Issue",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "issue_id",
+    "reviewer_hat",
+    "location",
+    "severity",
+    "confidence",
+    "issue_type",
+    "current_text",
+    "proposed_change",
+    "rationale",
+    "recommended_action",
+    "edit_safety",
+    "status",
+    "source",
+    "metadata"
+  ],
+  "properties": {
+    "issue_id": { "type": "string" },
+    "reviewer_hat": { "type": "string" },
+    "location": { "$ref": "#/$defs/location" },
+    "severity": { "type": "string", "enum": ["low", "medium", "high"] },
+    "confidence": { "type": "string", "enum": ["low", "medium", "high"] },
+    "issue_type": { "type": "string" },
+    "current_text": { "type": ["string", "null"] },
+    "proposed_change": { "type": ["string", "null"] },
+    "rationale": { "type": "string" },
+    "recommended_action": { "type": "string" },
+    "edit_safety": {
+      "type": "string",
+      "enum": ["safe_edit", "comment_only", "human_decision_required"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["proposed", "accepted", "rejected", "escalated", "resolved", "replaced"]
+    },
+    "source": { "$ref": "#/$defs/source" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["section_id", "heading_path", "paragraph_id", "page_or_location_if_available"],
+      "properties": {
+        "section_id": { "type": ["string", "null"] },
+        "heading_path": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "paragraph_id": { "type": ["string", "null"] },
+        "page_or_location_if_available": { "type": ["string", "null"] }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subagent", "document_id", "source_issue_ids"],
+      "properties": {
+        "subagent": { "type": "string" },
+        "document_id": { "type": "string" },
+        "source_issue_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

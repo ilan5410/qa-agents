@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/application-plan.schema.json",
+  "title": "Application Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "accepted_issue_ids",
+    "comment_only_issue_ids",
+    "rejected_issue_ids",
+    "escalated_issue_ids",
+    "requested_mode",
+    "application_rules",
+    "output_docx_path"
+  ],
+  "properties": {
+    "accepted_issue_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "comment_only_issue_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "rejected_issue_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "escalated_issue_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "requested_mode": {
+      "type": "string",
+      "enum": ["issue_log_only", "comments_only", "tracked_changes_for_safe_edits_and_comments", "ask_before_any_document_changes"]
+    },
+    "application_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "apply_only_approved_issues",
+        "preserve_original",
+        "modify_reviewed_copy_only",
+        "no_silent_text_changes",
+        "stop_if_tracked_changes_unavailable"
+      ],
+      "properties": {
+        "apply_only_approved_issues": { "type": "boolean" },
+        "preserve_original": { "type": "boolean" },
+        "modify_reviewed_copy_only": { "type": "boolean" },
+        "no_silent_text_changes": { "type": "boolean" },
+        "stop_if_tracked_changes_unavailable": { "type": "boolean" }
+      }
+    },
+    "output_docx_path": { "type": "string" }
+  }
+}

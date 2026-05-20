@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/qa-plan.schema.json",
+  "title": "QA Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_path",
+    "working_copy_path",
+    "output_type",
+    "stage",
+    "review_mode",
+    "modification_mode",
+    "context_files",
+    "selected_subagents",
+    "excluded_subagents",
+    "safeguards",
+    "approval_required",
+    "notes"
+  ],
+  "properties": {
+    "document_path": {
+      "type": "string",
+      "description": "Resolved path to the immutable source Word document."
+    },
+    "working_copy_path": {
+      "type": "string",
+      "description": "Resolved path to the reviewed copy used for any approved modifications."
+    },
+    "output_type": {
+      "type": "string",
+      "enum": ["expert_report", "client_report", "regulatory_submission", "proposal", "internal_note", "other", "issue_log_only", "reviewed_docx", "tracked_changes_docx", "comments_only", "mixed"]
+    },
+    "stage": {
+      "type": "string",
+      "enum": ["outline", "early_draft", "detailed_draft", "near_final", "final_qa", "scoping", "plan_pending_approval", "mapping", "review", "consolidation", "awaiting_user_selection", "application", "audit", "complete"]
+    },
+    "review_mode": {
+      "type": "string",
+      "enum": ["quick_cleanup", "full_technical_qa", "numbers_and_consistency_only", "style_and_proofreading_only", "references_and_sources_only", "custom", "light", "standard", "deep", "targeted"]
+    },
+    "modification_mode": {
+      "type": "string",
+      "enum": ["issue_log_only", "comments_only", "tracked_changes_for_safe_edits_and_comments", "ask_before_any_document_changes"]
+    },
+    "context_files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "selected_subagents": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "excluded_subagents": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "safeguards": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["original_unchanged", "all_edits_tracked", "no_silent_xml_changes", "reject_all_simulation", "issue_log_reconciliation"]
+          },
+          "uniqueItems": true
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "preserve_original",
+            "use_working_copy",
+            "reviewers_read_only",
+            "audit_after_modification",
+            "no_silent_text_changes",
+            "tracked_changes_required"
+          ],
+          "properties": {
+            "preserve_original": { "type": "boolean" },
+            "use_working_copy": { "type": "boolean" },
+            "reviewers_read_only": { "type": "boolean" },
+            "audit_after_modification": { "type": "boolean" },
+            "no_silent_text_changes": { "type": "boolean" },
+            "tracked_changes_required": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "approval_required": {
+      "oneOf": [
+        { "type": "boolean" },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["qa_plan", "application_choices"]
+          },
+          "uniqueItems": true
+        }
+      ]
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

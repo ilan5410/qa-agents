@@ -23,7 +23,8 @@ This is the fixed workflow for the Codex Word QA process. README.md, AGENTS.md, 
    - any `qa_run/working/docx_package_*` directories
 4. Orchestrator creates a QA Plan.
 5. User approves or edits the QA Plan before any mapping or reviewer work begins.
-6. Document Map subagent extracts structure and claims without reviewing or editing.
+6a. Document Map Runner subagent runs `document_map_parser.py` and writes `qa_run/working/document-map.json`. Fails loudly on error; orchestrator stops and reports to user.
+6b. Document Map subagent reads `document-map.json` and writes the human-readable `qa_run/working/document-map-summary.md`.
 7. Selected reviewer subagents run and return JSON issues matching `schemas/issue.schema.json`.
 8. Issue Log Consolidator creates a consolidated issue log.
 9. User chooses application mode: issue-log-only, comments-only, tracked changes for safe edits and comments for everything else, rerun selected hat, or stop without applying changes.

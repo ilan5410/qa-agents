@@ -60,13 +60,9 @@ Workflow:
 3. Identify or create the reviewed copy path for later application work, but do not edit document content.
 4. Create a QA Plan matching `schemas/qa-plan.schema.json`.
 5. Ask the user to approve or edit the QA Plan before continuing.
-6. After approval, invoke the Document Map subagent to extract:
-   - headings
-   - paragraphs
-   - tables
-   - footnotes
-   - references
-   - numeric claims
+6. After approval, extract the document structure in two steps:
+   6a. Invoke the Document Map Runner subagent. It runs `document_map_parser.py` and writes `qa_run/working/document-map.json`. If it reports FAILURE, stop and show the user the exact error before proceeding.
+   6b. Invoke the Document Map subagent. It reads `qa_run/working/document-map.json` and writes `qa_run/working/document-map-summary.md`.
 7. Invoke selected reviewer subagents. Available reviewer hats are:
    - proofreading
    - house style

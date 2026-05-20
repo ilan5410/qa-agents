@@ -18,7 +18,22 @@ Steps:
    - `qa_run/working/document-map.json`
    - `qa_run/working/chapters/` (directory, at least one `.json` file)
    - `qa_run/working/term-index.json`
-4. Report success with the output paths and chapter count, or report failure with the full error output.
+4. Validate `document-map.json` against `schemas/document-map.schema.json`:
+   ```
+   python3 -c "
+   import json, jsonschema, sys
+   data = json.load(open('qa_run/working/document-map.json'))
+   schema = json.load(open('schemas/document-map.schema.json'))
+   try:
+       jsonschema.validate(data, schema)
+       print('Schema validation passed')
+   except jsonschema.ValidationError as e:
+       print('SCHEMA VALIDATION FAILED:', e.message, file=sys.stderr)
+       sys.exit(1)
+   "
+   ```
+   If validation fails, stop and report the exact error. Do not proceed to the Document Map summariser.
+5. Report success with output paths, chapter count, and term count. Or report failure with exact error output.
 
 Hard boundaries:
 - Do not read or parse DOCX XML directly.
@@ -30,6 +45,6 @@ Hard boundaries:
 
 Output:
 Return one of:
-- SUCCESS: `qa_run/working/document-map.json` written (<N> bytes).
-- FAILURE: <exact stderr/exception output from the script>.
+- SUCCESS: `qa_run/working/document-map.json` written (<N> bytes), <N> chapters in `chapters/`, <N> terms in `term-index.json`. Schema validation passed.
+- FAILURE: <exact stderr/exception output from the script or validator>.
 """

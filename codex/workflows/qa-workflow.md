@@ -19,6 +19,7 @@ This is the fixed workflow for the Codex Word QA process. README.md, AGENTS.md, 
    - `qa_run/working/unresolved_issues.md`
    - `qa_run/working/*.reviewed.docx`
    - `qa_run/working/reviewer-packs/` (any files)
+   - `qa_run/working/reviewer-outputs/` (any files)
    - `qa_run/outputs/` (any files)
    - any `qa_run/working/docx_package_*` directories
    - `qa_run/working/chapters/` (any files)

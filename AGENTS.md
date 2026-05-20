@@ -30,13 +30,13 @@ The repo is instruction-first and agent-first. Do not create deterministic Pytho
 3. Orchestrator creates a QA Plan including chapter count and estimated subagent count.
 4. User approves or edits the QA Plan before any mapping or reviewer work begins.
 5. Document extraction runs in two steps:
-   - Document Map Runner runs `document_map_parser.py --output --by-chapter --term-index` and writes: `qa_run/working/document-map.json`, `qa_run/working/chapters/<chapter>.json` (one per section), `qa_run/working/term-index.json`. Fails loudly on error; workflow stops until error is resolved.
+   - Document Map Runner runs `document_map_parser.py --output --by-chapter --term-index` and writes: `qa_run/working/document-map.json`, `qa_run/working/chapters/<chapter>.json` (one per section), `qa_run/working/term-index.json`. Validates `document-map.json` against `schemas/document-map.schema.json` using jsonschema. Fails loudly on any error; workflow stops until resolved.
    - Document Map reads `document-map.json` and writes `qa_run/working/document-map-summary.md`.
 6. Selected reviewer subagents run according to their scope:
    - Chapter-level hats (proofreading, house style, references/sources): one subagent per chapter, run in parallel. Each receives only its chapter's data slice.
    - Full-document hats (terminology, numbers/tables/claims): one subagent for the whole document. Terminology receives the term-index only; numbers receives `numeric_claims` and `tables` only.
-7. Chapter-level outputs are merged per hat before consolidation.
-8. Issue Log Consolidator creates a consolidated issue log.
+7. Chapter-level outputs are merged per hat into `qa_run/working/reviewer-outputs/<hat>-issues.json`. Full-document hat outputs write there directly.
+8. Issue Log Consolidator reads from `qa_run/working/reviewer-outputs/` and creates a consolidated issue log.
 9. User chooses application mode: issue-log-only, comments-only, tracked changes for safe edits and comments for everything else, rerun selected hat, or stop without applying changes.
 10. Document Application subagent applies only user-approved changes to the reviewed copy.
 11. Audit subagent runs after any document application.
@@ -54,7 +54,7 @@ The Orchestrator must not apply document changes directly. It may create copies,
 
 ### Document Map Runner Subagent
 
-The Document Map Runner executes `document_map_parser.py` as a deterministic shell command. It writes three outputs: the full `document-map.json`, per-section `chapters/` files, and `term-index.json`. It reports SUCCESS or FAILURE with exact error output. It does not parse DOCX XML itself and does not fall back to ad-hoc extraction on failure.
+The Document Map Runner executes `document_map_parser.py` as a deterministic shell command. It writes three outputs: the full `document-map.json`, per-section `chapters/` files (each including a `footnote_map` for inline footnote resolution), and `term-index.json` (stopword-filtered term occurrence index). It then validates `document-map.json` against `schemas/document-map.schema.json`. It reports SUCCESS or FAILURE with exact error output. It does not parse DOCX XML itself and does not fall back to ad-hoc extraction on failure.
 
 ### Document Map Subagent
 

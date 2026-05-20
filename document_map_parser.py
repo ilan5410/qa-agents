@@ -58,6 +58,22 @@ TERM_ACRONYM_RE = re.compile(r"\b[A-Z]{2,}\b")
 TERM_PHRASE_RE = re.compile(r"\b[A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)+\b")
 TERM_HYPHEN_RE = re.compile(r"\b[a-z]{2,}-[a-z]{2,}\b")
 
+_TERM_STOPWORDS = frozenset({
+    "a", "an", "the", "this", "that", "these", "those", "it", "its",
+    "in", "on", "at", "to", "for", "of", "and", "or", "but", "with",
+    "by", "from", "as", "is", "are", "was", "were", "be", "been", "being",
+    "have", "has", "had", "do", "does", "did", "will", "would", "shall",
+    "should", "may", "might", "must", "can", "could", "not", "no", "so",
+    "then", "than", "when", "where", "which", "who", "what", "how", "if",
+    "because", "since", "while", "after", "before", "during", "through",
+    "about", "above", "below", "between", "into", "onto", "under", "upon",
+    "within", "without", "each", "every", "all", "any", "some", "such",
+    "more", "most", "also", "both", "either", "neither", "there", "here",
+    "we", "they", "he", "she", "you", "i", "our", "their", "his", "her",
+    "your", "my", "however", "therefore", "thus", "hence", "although",
+    "though", "whether", "unless", "until",
+})
+
 
 @dataclass(frozen=True)
 class StyleInfo:
@@ -809,6 +825,13 @@ def split_by_chapter(document_map: dict) -> dict[str, dict]:
     document_id = document_map.get("document_id", "")
     source_path = document_map.get("source_docx_path", "")
 
+    # footnote_map included in every chapter so reviewers can resolve [fn:X] markers inline
+    footnote_map: dict[str, str] = {
+        fn["note_id"]: fn.get("summary", "")
+        for fn in document_map.get("footnotes", [])
+        if "note_id" in fn
+    }
+
     # section_id → first heading info
     section_heading: dict[str, dict] = {}
     for h in headings:
@@ -858,6 +881,7 @@ def split_by_chapter(document_map: dict) -> dict[str, dict]:
             "tables": [t for t in tables if table_section.get(t["id"]) == sid],
             "numeric_claims": [c for c in numeric_claims if claim_section(c) == sid],
             "references": [r for r in references if r.get("section_id") == sid],
+            "footnote_map": footnote_map,
         }
     return chapters
 
@@ -877,8 +901,15 @@ def build_term_index(document_map: dict) -> dict:
                 end = min(len(text), match.end() + 30)
                 snippet = text[start:end].strip()
                 occurrences[term].append({"paragraph_id": pid, "section_id": sid, "snippet": snippet})
-    # Keep only terms appearing 2+ times
-    filtered = {t: locs for t, locs in occurrences.items() if len(locs) >= 2}
+    # Keep only terms appearing 2+ times and not composed entirely of stopwords
+    def _is_all_stopwords(term: str) -> bool:
+        return all(w.lower() in _TERM_STOPWORDS for w in term.split())
+
+    filtered = {
+        t: locs
+        for t, locs in occurrences.items()
+        if len(locs) >= 2 and not _is_all_stopwords(t)
+    }
     return {
         "document_id": document_map.get("document_id", ""),
         "source_docx_path": document_map.get("source_docx_path", ""),

@@ -9,8 +9,13 @@ Purpose:
 Merge and prioritise reviewer outputs into one usable issue log. You do not edit the Word document.
 
 Inputs:
-- JSON issue outputs from all selected reviewer subagents
-- QA Plan
+Read the following files from disk. Do not accept reviewer issue content passed inline.
+- `qa_run/working/reviewer-outputs/proofreading-issues.json` (if proofreading hat ran)
+- `qa_run/working/reviewer-outputs/house-style-issues.json` (if house style hat ran)
+- `qa_run/working/reviewer-outputs/references-sources-issues.json` (if references hat ran)
+- `qa_run/working/reviewer-outputs/terminology-issues.json` (if terminology hat ran)
+- `qa_run/working/reviewer-outputs/numbers-tables-claims-issues.json` (if numbers hat ran)
+Only read files that exist. Skip missing hat files silently and note their absence in metadata.
 
 Tasks:
 - validate issue shape against `schemas/issue.schema.json`

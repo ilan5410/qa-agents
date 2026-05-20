@@ -68,6 +68,7 @@ Workflow:
    - `qa_run/working/unresolved_issues.md`
    - `qa_run/working/*.reviewed.docx`
    - `qa_run/working/reviewer-packs/` (any files)
+   - `qa_run/working/reviewer-outputs/` (any files)
    - `qa_run/outputs/` (any files)
    - any `qa_run/working/docx_package_*` directories
    - `qa_run/working/chapters/` (any files)
@@ -82,7 +83,9 @@ Workflow:
    6b. Invoke the Document Map subagent. It reads `qa_run/working/document-map.json` and writes `qa_run/working/document-map-summary.md`.
 7. Invoke selected reviewer subagents.
 
-   Before running, list the chapter files in `qa_run/working/chapters/` to determine chapter count. Tell the user: "Running [N] chapter-level subagents per chapter-hat and [M] full-document subagents."
+   Before running, list the chapter files in `qa_run/working/chapters/` to determine chapter count. Tell the user: "Running [N] chapter-level subagents per chapter-hat and [M] full-document subagents — [total] subagents in total."
+
+   After dispatching parallel chapter subagents, report progress as results arrive: "Proofreading: 2/6 chapters complete." Update per hat as each subagent returns.
 
    Pack file naming convention: `qa_run/working/reviewer-packs/<hat>-<chapter_id>.json` for chapter-level packs (e.g. `proofreading-ch_0001.json`), and `qa_run/working/reviewer-packs/<hat>.json` for full-document packs.
 
@@ -98,7 +101,7 @@ Workflow:
 
    Numbers/tables/claims (full document): one pack — `numeric_claims` and `tables` arrays from `document-map.json` only. No paragraph prose. `document_map_path`.
 
-   After all reviewer subagents complete, merge chapter-level outputs per hat before passing to the consolidator: combine all `proofreading-ch_*.json` into a single `reviewer_outputs/proofreading-issues.json`, and so on for house style and references.
+   After all reviewer subagents complete, merge chapter-level outputs per hat before passing to the consolidator: combine all `proofreading-ch_*.json` into `qa_run/working/reviewer-outputs/proofreading-issues.json`, and so on for house style and references. Full-document hat outputs write directly to `qa_run/working/reviewer-outputs/<hat>-issues.json`.
 8. Require reviewer subagents to return structured JSON issues only, matching `schemas/issue.schema.json`. Reviewer outputs must be compact JSON with no indentation.
 9. Invoke the Issue Log Consolidator subagent to deduplicate, prioritise, and normalise reviewer findings into an issue log matching `schemas/issue-log.schema.json`. Pass reviewer output files only. Do not pass document-map.json to the consolidator.
 10. After consolidation, present the user with a brief summary from the issue-log.json `summary` field (counts by severity and reviewer hat). Then ask the user to choose one or more next actions:

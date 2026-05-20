@@ -21,6 +21,7 @@ The core review and application process is orchestrated by Codex agents. `docume
    - `qa_run/working/unresolved_issues.md`
    - `qa_run/working/*.reviewed.docx`
    - `qa_run/working/reviewer-packs/` (any files)
+   - `qa_run/working/reviewer-outputs/` (any files)
    - `qa_run/working/chapters/` (any files)
    - `qa_run/working/term-index.json`
    - `qa_run/outputs/` (any files)
@@ -28,12 +29,12 @@ The core review and application process is orchestrated by Codex agents. `docume
 4. Orchestrator creates a QA Plan including chapter count and estimated subagent count.
 5. User approves or edits the QA Plan before any mapping or reviewer work begins.
 6. Document extraction runs in two steps:
-   - **Document Map Runner** runs `document_map_parser.py` and writes three outputs: `document-map.json` (full structure), `chapters/` (one JSON per section), and `term-index.json` (recurring-term index). Fails loudly on error.
+   - **Document Map Runner** runs `document_map_parser.py` and writes three outputs: `document-map.json` (full structure), `chapters/` (one JSON per section), and `term-index.json` (recurring-term index). Validates `document-map.json` against the schema before proceeding. Fails loudly on any error.
    - **Document Map** reads `document-map.json` and writes a human-readable `document-map-summary.md`.
 7. Selected reviewer subagents run. Hats split by scope:
    - **Chapter-level** (one subagent per chapter, run in parallel): proofreading, house style, references/sources.
    - **Full-document** (one subagent for the whole document): terminology (uses term-index, not raw paragraphs), numbers/tables/claims.
-8. Issue Log Consolidator merges chapter-level outputs per hat, then deduplicates and consolidates all findings.
+8. Issue Log Consolidator reads merged outputs from `qa_run/working/reviewer-outputs/`, deduplicates and consolidates all findings.
 9. User chooses application mode: issue-log-only, comments-only, tracked changes for safe edits and comments for everything else, rerun selected hat, or stop without applying changes.
 10. Document Application subagent applies only user-approved changes to the reviewed copy.
 11. Audit subagent runs after any document application.
@@ -61,10 +62,12 @@ Subagent TOMLs live in `codex/subagents/`.
 The pipeline is designed to minimise token consumption:
 
 - Chapter-level hats receive only their chapter's paragraphs — not the full document.
-- Terminology hat receives a pre-computed term-occurrence index, not raw paragraph text.
+- Each chapter file includes a `footnote_map` so reviewers can resolve `[fn:X]` markers inline without accessing the full document map.
+- Terminology hat receives a pre-computed term-occurrence index, not raw paragraph text. Common stopwords are filtered from the index.
 - Numbers hat receives only `numeric_claims` and `tables` arrays — no prose.
 - `surrounding_sentence` fields are capped at 120 characters.
 - Bare list markers (1., 2) etc.) are filtered from numeric claims before packing.
+- `document-map.json` is schema-validated immediately after extraction; a bad parse stops the workflow before any reviewer runs.
 
 ## Safety Model
 
@@ -106,9 +109,8 @@ The pipeline is designed to minimise token consumption:
 - `schemas/` — JSON schemas for QA plans, document maps, issues, issue logs, application plans, and audit reports.
 - `examples/` — matching example JSON files.
 - `qa_run/input/` — place input DOCX here before starting.
-- `qa_run/working/` — all working files (document-map.json, chapters/, term-index.json, reviewer packs, etc.).
+- `qa_run/working/` — all working files: `document-map.json`, `chapters/`, `term-index.json`, `reviewer-packs/` (input packs for reviewers), `reviewer-outputs/` (merged per-hat JSON before consolidation).
 - `qa_run/outputs/` — final outputs.
-- `reviewer_outputs/` — merged per-hat reviewer JSON before consolidation.
 - `prompts/`, `docs/`, `tests/` — reserved for future workflow material and validation fixtures.
 
 ## Known Limitations

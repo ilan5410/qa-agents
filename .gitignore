@@ -15,10 +15,6 @@ qa_run/working/*
 qa_run/outputs/*
 !qa_run/outputs/.gitkeep
 
-# Reviewer outputs (per-run JSON)
-reviewer_outputs/*.json
-!reviewer_outputs/.gitkeep
-
 # Tooling runtime state
 .omx/
 

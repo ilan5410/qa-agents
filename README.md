@@ -4,6 +4,10 @@ This repository defines an agent-first Codex workflow for AI-supported QA of Wor
 
 The core review and application process is orchestrated by Codex agents. `document_map_parser.py` is a deterministic Python helper used only for DOCX extraction — it is not the review engine.
 
+## Workflow Overview
+
+![Workflow overview](docs/workflow-overview.png)
+
 ## Workflow
 
 1. User provides a Word document.

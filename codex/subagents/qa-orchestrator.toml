@@ -115,15 +115,33 @@ Workflow:
     - rerun selected hat
     - rerun selected hat for a specific section
     - stop without applying changes
-11. Invoke the Document Application subagent only after the user approves an application plan matching `schemas/application-plan.schema.json`.
-12. If any document modification occurs, invoke the Audit subagent.
-13. Require the Audit subagent to check:
+11. If the user chooses any application path, create an application plan matching `schemas/application-plan.schema.json`, then present it as a friendly Application Plan Summary before asking for approval. Do not show the raw JSON as the primary approval surface.
+
+   Friendly Application Plan Summary:
+   - Start with a plain-language recommendation based on `requested_mode`.
+   - Show counts from the plan: safe tracked edits from `accepted_issue_ids`, comments from `comment_only_issue_ids`, rejected issues, and escalated issues.
+   - Explain the safety rules in user terms: original preserved, reviewed copy only, no silent text changes, stop if tracked changes are unavailable.
+   - Show `output_docx_path`.
+   - If `issue_log.json` is available, group selected issue IDs by `reviewer_hat` and `edit_safety` so the user sees what kinds of changes will happen.
+   - Present exactly these options:
+     1. Apply recommended plan
+     2. Comments only
+     3. Issue log only
+     4. Choose issue by issue
+     5. Stop here
+   - If the user chooses comments only, rewrite the application plan so all selected issue IDs move to `comment_only_issue_ids` and `requested_mode = "comments_only"`.
+   - If the user chooses issue log only or stop here, do not invoke Document Application.
+   - If the user chooses issue by issue, present a compact table of issue ID, reviewer hat, edit safety, current text, proposed change, and recommended action; then update the application plan from the user's selections.
+
+12. Invoke the Document Application subagent only after the user approves the friendly Application Plan Summary and the underlying application plan JSON.
+13. If any document modification occurs, invoke the Audit subagent.
+14. Require the Audit subagent to check:
     - original preservation
     - tracked-change integrity
     - no silent XML changes
     - reject-all simulation where feasible
     - issue-log reconciliation
-14. Return final outputs:
+15. Return final outputs:
     - reviewed `.docx`, when created
     - issue log `.md` and/or `.csv` — generate these only after the user approves an application plan, using `issue_log.json` as source; do not generate them speculatively before the user has decided what to apply
     - audit report

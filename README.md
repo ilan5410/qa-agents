@@ -104,13 +104,14 @@ The pipeline is designed to minimise token consumption:
 5. The Orchestrator runs the Document Map Runner, then the Document Map summariser.
 6. Chapter-level reviewer subagents run in parallel per chapter. Full-document reviewers run once.
 7. Inspect the consolidated issue log.
-8. Choose the application mode:
+8. Choose the application mode from the friendly Application Plan Summary:
    - issue log only
    - comments only
    - tracked changes for safe edits and comments for everything else
+   - choose issue by issue
    - rerun selected hat (chapter-level: choose all chapters or a specific one)
    - stop without applying changes
-9. If applying changes, approve the application choices.
+9. If applying changes, approve the friendly application summary. The raw `application-plan.json` remains the machine-readable contract, but the user-facing view shows counts, safety rules, output path, and the available options.
 10. Inspect the reviewed `.docx`, issue log, application log, unresolved issues note if created, and audit report.
 
 ## Repository Layout

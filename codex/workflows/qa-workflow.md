@@ -31,7 +31,7 @@ This is the fixed workflow for the Codex Word QA process. README.md, AGENTS.md, 
 7. Selected reviewer subagents run and return JSON issues matching `schemas/issue.schema.json`.
    Default full-technical-QA runs the stronger canonical reviewers: `footnote_proofreader_update`, `style_proofreader`, `technical_proofreader`, `terminology_reviewer`, and `numbers_tables_claims_reviewer`. Legacy fallback reviewers only run if the user explicitly selects them.
 8. Issue Log Consolidator creates a consolidated issue log.
-9. User chooses application mode: issue-log-only, comments-only, tracked changes for safe edits and comments for everything else, rerun selected hat, or stop without applying changes.
+9. User chooses application mode from a friendly Application Plan Summary, not raw JSON. The summary shows counts for tracked edits, comments, rejected and escalated issues; explains the safety rules; shows the output path; and offers apply recommended plan, comments only, issue log only, choose issue by issue, or stop here.
 10. Document Application subagent applies only user-approved changes to the reviewed copy.
 11. Audit subagent runs after any document application.
 12. Outputs are reviewed `.docx` where applicable, issue log, application log where applicable, audit report where applicable, and optional unresolved issues note.

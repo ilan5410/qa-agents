@@ -121,6 +121,7 @@ Scenario:
 - Document Application subagent applies only approved issues.
 - Original remains unchanged.
 - Comments and changes include issue IDs.
+- The Orchestrator presents `application-plan.json` through a friendly Application Plan Summary before approval.
 
 Pass criteria:
 
@@ -131,6 +132,8 @@ Pass criteria:
 - Numeric issues are not automatically corrected.
 - `application_log.json` records applied, skipped, rejected, unresolved, and comment-only issue IDs.
 - `unresolved_issues.md` is produced where relevant.
+- The user-facing application summary includes counts, safety rules, output path, and clear choices: apply recommended plan, comments only, issue log only, choose issue by issue, or stop here.
+- The raw application-plan JSON is not used as the primary user approval surface.
 
 Fail criteria:
 
@@ -139,6 +142,7 @@ Fail criteria:
 - Comments or changes lack issue IDs.
 - Text is silently replaced.
 - Numbers are corrected without explicit approved wording.
+- The Orchestrator asks the user to approve raw JSON without a friendly summary.
 
 ## 6. Audit Test
 

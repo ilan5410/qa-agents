@@ -141,7 +141,8 @@ Workflow:
     - no silent XML changes
     - reject-all simulation where feasible
     - issue-log reconciliation
-15. Return final outputs:
+15. After Document Application and Audit complete, publish the final user-facing deliverables to `qa_run/outputs/`. At minimum copy the reviewed `.docx`, issue log, application log, audit report, and unresolved issues note when present. Treat `qa_run/working/` as intermediate state only; the final response must point to the `qa_run/outputs/` copies.
+16. Return final outputs:
     - reviewed `.docx`, when created
     - issue log `.md` and/or `.csv` — generate these only after the user approves an application plan, using `issue_log.json` as source; do not generate them speculatively before the user has decided what to apply
     - audit report

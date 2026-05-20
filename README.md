@@ -43,7 +43,7 @@ The core review and application process is orchestrated by Codex agents. `docume
 9. User chooses application mode: issue-log-only, comments-only, tracked changes for safe edits and comments for everything else, rerun selected hat, or stop without applying changes.
 10. Document Application subagent applies only user-approved changes to the reviewed copy.
 11. Audit subagent runs after any document application.
-12. Outputs are reviewed `.docx` where applicable, issue log, application log where applicable, audit report where applicable, and optional unresolved issues note.
+12. Final user-facing deliverables are published to `qa_run/outputs/`: reviewed `.docx` where applicable, issue log, application log where applicable, audit report where applicable, and optional unresolved issues note. `qa_run/working/` remains intermediate state only.
 
 ## Subagents
 

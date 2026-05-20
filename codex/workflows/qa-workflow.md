@@ -34,7 +34,7 @@ This is the fixed workflow for the Codex Word QA process. README.md, AGENTS.md, 
 9. User chooses application mode from a friendly Application Plan Summary, not raw JSON. The summary shows counts for tracked edits, comments, rejected and escalated issues; explains the safety rules; shows the output path; and offers apply recommended plan, comments only, issue log only, choose issue by issue, or stop here.
 10. Document Application subagent applies only user-approved changes to the reviewed copy.
 11. Audit subagent runs after any document application.
-12. Outputs are reviewed `.docx` where applicable, issue log, application log where applicable, audit report where applicable, and optional unresolved issues note.
+12. Publish final user-facing deliverables to `qa_run/outputs/`: reviewed `.docx` where applicable, issue log, application log where applicable, audit report where applicable, and optional unresolved issues note. `qa_run/working/` remains intermediate state and must not be treated as the final delivery folder.
 
 ## Default Modification Mode
 
